@@ -23,6 +23,15 @@ const Layout = ({ children }: React.PropsWithChildren) => {
       <div className="mx-auto mb-16 max-w-screen-2xl p-4 lg:flex lg:p-16">
         {children}
       </div>
+      <footer className="py-4 text-center text-sm text-gray-400">
+        Contact me →{' '}
+        <a
+          href="mailto:yanfu.zhang@outlook.com"
+          className="hover:text-gray-200 underline"
+        >
+          yanfu.zhang@outlook.com
+        </a>
+      </footer>
     </>
   );
 };
