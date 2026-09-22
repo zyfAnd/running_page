@@ -161,6 +161,12 @@ def update_or_create_activity(session, run_activity):
     except Exception as e:
         print(f"something wrong with {run_activity.id}")
         print(str(e))
+        # A failed flush leaves the session unusable ("This Session's
+        # transaction has been rolled back...") until it's explicitly rolled
+        # back, otherwise every subsequent activity in this batch fails with
+        # the same stale error. Roll back so the rest of the batch can still
+        # be processed.
+        session.rollback()
 
     return created
 

@@ -235,12 +235,24 @@ class Track:
                 self.start_time_local, self.end_time_local = parse_datetime_to_local(
                     self.start_time, self.end_time, None
                 )
-        # use timestamp as id
-        self.run_id = self.__make_run_id(self.start_time)
         if self.start_time is None:
             raise TrackLoadError("Track has no start time.")
         if self.end_time is None:
             raise TrackLoadError("Track has no end time.")
+        # Some GPX files (older exports whose points mixed delta and
+        # absolute timestamp formats) end up with a bogus far-future/far-past
+        # start or end time. Reject those here rather than letting a garbage
+        # multi-thousand-year moving_time/elapsed_time reach the database,
+        # where it overflows and poisons the whole sync batch.
+        this_year = datetime.datetime.now(timezone.utc).year
+        if not (1990 <= self.start_time.year <= this_year + 2) or not (
+            1990 <= self.end_time.year <= this_year + 2
+        ):
+            raise TrackLoadError(
+                f"Implausible track time range: {self.start_time} - {self.end_time}"
+            )
+        # use timestamp as id
+        self.run_id = self.__make_run_id(self.start_time)
         self.length = gpx.length_2d()
         moving_time = 0
         for t in gpx.tracks:
@@ -341,24 +353,24 @@ class Track:
             else float(gpx_extensions.get("average_hr"))
         )
         self.moving_dict["average_speed"] = (
-            self.moving_dict["average_speed"]
+            self.moving_dict.get("average_speed", 0)
             if gpx_extensions.get("average_speed") is None
             else float(gpx_extensions.get("average_speed"))
         )
         self.moving_dict["distance"] = (
-            self.moving_dict["distance"]
+            self.moving_dict.get("distance", self.length)
             if gpx_extensions.get("distance") is None
             else float(gpx_extensions.get("distance"))
         )
 
         self.moving_dict["moving_time"] = (
-            self.moving_dict["moving_time"]
+            self.moving_dict.get("moving_time", datetime.timedelta(0))
             if gpx_extensions.get("moving_time") is None
             else datetime.timedelta(seconds=float(gpx_extensions.get("moving_time")))
         )
 
         self.moving_dict["elapsed_time"] = (
-            self.moving_dict["elapsed_time"]
+            self.moving_dict.get("elapsed_time", datetime.timedelta(0))
             if gpx_extensions.get("elapsed_time") is None
             else datetime.timedelta(seconds=float(gpx_extensions.get("elapsed_time")))
         )
