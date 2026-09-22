@@ -27,7 +27,7 @@ const Layout = ({ children }: React.PropsWithChildren) => {
         Contact me →{' '}
         <a
           href="mailto:yanfu.zhang@outlook.com"
-          className="hover:text-gray-200 underline"
+          className="underline hover:text-gray-200"
         >
           yanfu.zhang@outlook.com
         </a>
