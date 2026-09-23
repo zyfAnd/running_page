@@ -3,10 +3,12 @@ import base64
 import json
 import os
 import time
+import xml.etree.ElementTree as ET
 import zlib
 from collections import namedtuple
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from xml.dom import minidom
+
 import eviltransform
 import gpxpy
 import polyline
@@ -21,8 +23,8 @@ from config import (
 )
 from Crypto.Cipher import AES
 from generator import Generator
+
 from utils import adjust_time
-import xml.etree.ElementTree as ET
 
 KEEP_SPORT_TYPES = ["running", "hiking", "cycling"]
 KEEP2STRAVA = {
@@ -116,7 +118,7 @@ def get_to_download_runs_ids(session, headers, sport_type):
                 logs = [j["stats"] for j in i["logs"]]
                 result.extend(k["id"] for k in logs if not k["isDoubtful"])
             last_date = r.json()["data"]["lastTimestamp"]
-            since_time = datetime.fromtimestamp(last_date // 1000, tz=timezone.utc)
+            since_time = datetime.fromtimestamp(last_date // 1000, tz=UTC)
             print(f"pares keep ids data since {since_time}")
             time.sleep(1)  # spider rule
             if not last_date:
@@ -255,10 +257,10 @@ def build_activity_from_group(
     coords = [[p["latitude"], p["longitude"]] for p in all_points]
     polyline_str = polyline.encode(coords) if coords else ""
     start_latlng = start_point(*coords[0]) if coords else None
-    start_date = datetime.fromtimestamp(start_time // 1000, tz=timezone.utc)
+    start_date = datetime.fromtimestamp(start_time // 1000, tz=UTC)
     tz_name = segs[0].get("timezone", "")
     start_date_local = adjust_time(start_date, tz_name)
-    end = datetime.fromtimestamp(end_time // 1000, tz=timezone.utc)
+    end = datetime.fromtimestamp(end_time // 1000, tz=UTC)
     end_local = adjust_time(end, tz_name)
     if not duration:
         print(f"ID {keep_id} has no total time just ignore please check")
@@ -358,7 +360,7 @@ def get_all_keep_tracks(
                 run_data = get_single_run_data(s, headers, run, api)
                 if run_data and run_data.get("data"):
                     raw_runs.append(run_data)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Something wrong downloading keep id {run}: " + str(e))
         raw_runs.sort(key=lambda r: r["data"]["startTime"])
 
@@ -372,7 +374,7 @@ def get_all_keep_tracks(
                 if track is not None:
                     tracks.append(track)
                     newly_consumed_segment_ids.update(i.split("_")[1] for i in ids)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Something wrong paring keep id(s) {ids}: " + str(e))
 
     if newly_consumed_segment_ids:
@@ -408,7 +410,7 @@ def parse_points_to_gpx(run_points_data, start_time, sport_type):
             # note that the timestamp of a point is decisecond(分秒)
             "time": datetime.fromtimestamp(
                 (start_time // 1000 + point["timestamp"] // 10),
-                tz=timezone.utc,
+                tz=UTC,
             ),
             "elevation": point.get("altitude"),
             "hr": point.get("hr"),
@@ -456,7 +458,7 @@ def parse_points_to_tcx(run_data, run_points_data, sport_type):
 
     # note that the timestamp of a point is decisecond(分秒)
     fit_start_time = datetime.fromtimestamp(
-        run_data.get("startTime") // 1000, tz=timezone.utc
+        run_data.get("startTime") // 1000, tz=UTC
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # early timestamp fields in keep's data stands for delta time, but in newly
@@ -520,7 +522,7 @@ def parse_points_to_tcx(run_data, run_points_data, sport_type):
         # note that the timestamp of a point is decisecond(分秒)
         time_stamp = datetime.fromtimestamp(
             (tcx_start_time // 1000 + point.get("timestamp") // 10),
-            tz=timezone.utc,
+            tz=UTC,
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
         time_label = ET.Element("Time")
         time_label.text = time_stamp
@@ -581,7 +583,7 @@ def find_nearest_hr(
     min_difference = float("inf")
     if target_time > TIMESTAMP_THRESHOLD_IN_DECISECOND:
         # note that the unit of target_time is decisecond and the unit of start_time is normal millisecond
-        target_time = target_time = target_time - start_time // 100
+        target_time = target_time - start_time // 100
 
     for item in hr_data_list:
         timestamp = item.get("timestamp")
@@ -605,28 +607,26 @@ def find_nearest_hr(
 
 def download_keep_gpx(gpx_data, keep_id):
     try:
-        print(f"downloading keep_id {str(keep_id)} gpx")
+        print(f"downloading keep_id {keep_id!s} gpx")
         file_path = os.path.join(GPX_FOLDER, str(keep_id) + ".gpx")
         with open(file_path, "w") as fb:
             fb.write(gpx_data)
         return file_path
-    except Exception as e:
-        print(f"Something wrong to download keep gpx {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        print(f"Something wrong to download keep gpx {e!s}")
         print(f"wrong id {keep_id}")
-        pass
 
 
 def download_keep_tcx(tcx_data, keep_id):
     try:
-        print(f"downloading keep_id {str(keep_id)} tcx")
+        print(f"downloading keep_id {keep_id!s} tcx")
         file_path = os.path.join(TCX_FOLDER, str(keep_id) + ".tcx")
         with open(file_path, "w") as fb:
             fb.write(tcx_data)
         return file_path
-    except Exception as e:
-        print(f"Something wrong to download keep tcx {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        print(f"Something wrong to download keep tcx {e!s}")
         print(f"wrong id {keep_id}")
-        pass
 
 
 def run_keep_sync(
