@@ -194,7 +194,9 @@ def _decode_and_process_points(run_data):
     return points, avg_heart_rate
 
 
-def build_activity_from_group(group, old_gpx_ids, old_tcx_ids, with_gpx=False, with_tcx=False):
+def build_activity_from_group(
+    group, old_gpx_ids, old_tcx_ids, with_gpx=False, with_tcx=False
+):
     """Build a single activity namedtuple from one or more Keep logs.
 
     ``group`` is a list of raw Keep run_data dicts (as returned by
@@ -240,8 +242,7 @@ def build_activity_from_group(group, old_gpx_ids, old_tcx_ids, with_gpx=False, w
                     "startTime": start_time,
                     "duration": duration,
                     "distance": distance,
-                    "calorie": sum(seg.get("calorie", 0) or 0 for seg in segs)
-                    or None,
+                    "calorie": sum(seg.get("calorie", 0) or 0 for seg in segs) or None,
                 }
                 tcx_data = parse_points_to_tcx(
                     tcx_run_data, all_points, KEEP2TCX[data_type]
@@ -370,9 +371,7 @@ def get_all_keep_tracks(
                 )
                 if track is not None:
                     tracks.append(track)
-                    newly_consumed_segment_ids.update(
-                        i.split("_")[1] for i in ids
-                    )
+                    newly_consumed_segment_ids.update(i.split("_")[1] for i in ids)
             except Exception as e:
                 print(f"Something wrong paring keep id(s) {ids}: " + str(e))
 
